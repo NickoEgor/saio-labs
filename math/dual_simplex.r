@@ -4,6 +4,19 @@ library(matlib) # inv
 library(MASS)   # ginv
 library(gtools) # combinations
 
+inv_matrix <- function(A, eps) {
+    if (abs(det(A)) < eps) {
+        stop("det(Ab) < eps")
+    }
+    if (nrow(A) == 1 && ncol(A) == 1) {
+        return(ginv(A))
+    }
+    else {
+        # print(paste("dims", toString(dim(A))))
+        return(inv(A))
+    }
+}
+
 dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6) {
 
     rows <- nrow(A)
@@ -20,16 +33,12 @@ dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6) {
         }
     }
 
-    if (det(Ab) < eps) {
-        stop("det(Ab) = 0")
-    }
-    if (nrow(Ab) == 1 && ncol(Ab) == 1) {
-        B <- ginv(Ab)
-    }
-    else {
-        print(paste("dims", toString(dim(Ab))))
-        B <- inv(Ab)
-    }
+    print("A")
+    print(A)
+    print(paste("b:", toString(b)))
+    print(paste("c:", toString(c)))
+
+    B <- inv_matrix(Ab, eps)
 
     # step 1
     y <- c[Jb] %*% B
@@ -48,25 +57,16 @@ dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6) {
         nu <- rep(0, cols)
         nu[Jn_plus] <- d_d[Jn_plus]
         nu[Jn_minus] <- d_u[Jn_minus]
-        print(paste("J:", toString(J)))
-        print(paste("d_d:", toString(d_d)))
-        print(paste("Jn+:", toString(Jn_plus)))
-        print(paste("d_u:", toString(d_u)))
-        print(paste("Jn-:", toString(Jn_minus)))
-        print(paste("nu1:", toString(nu)))
 
         s <- 0
         for (i in Jn) {
             s <- s + A[,i]*nu[i]
         }
 
-        print(paste("s:", toString(s)))
         nu[Jb] <- B %*% (b - s)
 
         # step 3
-        print(paste("nu2:", toString(nu)))
-        print(paste("wtf1", all(d_d[Jb] - eps < nu[Jb])))
-        print(paste("wtf2", all(d_u[Jb] + eps > nu[Jb])))
+        print(paste("nu:", toString(nu)))
         if (all(d_d[Jb] - eps < nu[Jb]) && all(d_u[Jb] + eps > nu[Jb])) {
             solved <- TRUE
             break
@@ -108,18 +108,24 @@ dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6) {
         coplan <- coplan + sigma0*uv
 
         # step 8
+        print(paste("Jb:", toString(Jb)))
+        print("Ab")
+        print(Ab)
         Jb[k] <- j_star
         Ab <- A[,Jb]
-        if (det(Ab) < eps) {
-            stop("det(Ab) = 0")
-        }
-        if (nrow(Ab) == 1 && ncol(Ab) == 1) {
-            B <- ginv(Ab)
-        }
-        else {
-            print(paste("dims", toString(dim(Ab))))
-            B <- inv(Ab)
-        }
+
+        print(paste("new Jb:", toString(Jb)))
+        print("new Ab")
+        print(Ab)
+
+        # print("A")
+        # print(A)
+        # print(paste("b:", toString(b)))
+        # print(paste("c:", toString(c)))
+        print("ALIVE")
+        B <- inv_matrix(Ab, eps)
+        print("DEAD")
+        print("______________________________________________")
 
         # step 9
         Jn = setdiff(J, Jb)
