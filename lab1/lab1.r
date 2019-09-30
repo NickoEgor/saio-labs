@@ -17,7 +17,7 @@ d_u <- res$d_u
 
 result <- dual_simplex(A, b, c, d_d, d_u)
 
-if (result$hasSolutions) {
+if (result$solved) {
     print("Iterations:")
     print(result$iterations)
     print("Plan:")

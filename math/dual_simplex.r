@@ -1,11 +1,10 @@
 #!/usr/bin/env Rscript
 
 library(matlib) # inv
+library(MASS)   # ginv
 library(gtools) # combinations
 
-EPSILON <- 1e-6
-
-dual_simplex <- function(A, b, c, d_d, d_u) {
+dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6) {
 
     rows <- nrow(A)
     cols <- ncol(A)
@@ -21,7 +20,16 @@ dual_simplex <- function(A, b, c, d_d, d_u) {
         }
     }
 
-    B <- inv(Ab)
+    if (det(Ab) < eps) {
+        stop("det(Ab) = 0")
+    }
+    if (nrow(Ab) == 1 && ncol(Ab) == 1) {
+        B <- ginv(Ab)
+    }
+    else {
+        print(paste("dims", toString(dim(Ab))))
+        B <- inv(Ab)
+    }
 
     # step 1
     y <- c[Jb] %*% B
@@ -30,7 +38,7 @@ dual_simplex <- function(A, b, c, d_d, d_u) {
     Jn_plus <- Jn[which(coplan[Jn] >= 0)]
     Jn_minus <- setdiff(Jn, Jn_plus)
 
-    hasSolutions <- FALSE
+    solved <- FALSE
 
     # iteration
     iter <- 0
@@ -40,22 +48,32 @@ dual_simplex <- function(A, b, c, d_d, d_u) {
         nu <- rep(0, cols)
         nu[Jn_plus] <- d_d[Jn_plus]
         nu[Jn_minus] <- d_u[Jn_minus]
+        print(paste("J:", toString(J)))
+        print(paste("d_d:", toString(d_d)))
+        print(paste("Jn+:", toString(Jn_plus)))
+        print(paste("d_u:", toString(d_u)))
+        print(paste("Jn-:", toString(Jn_minus)))
+        print(paste("nu1:", toString(nu)))
 
         s <- 0
         for (i in Jn) {
             s <- s + A[,i]*nu[i]
         }
 
+        print(paste("s:", toString(s)))
         nu[Jb] <- B %*% (b - s)
 
         # step 3
-        if (all(d_d[Jb] - EPSILON < nu[Jb]) && all(d_u[Jb] + EPSILON > nu[Jb])) {
-            hasSolutions <- TRUE
+        print(paste("nu2:", toString(nu)))
+        print(paste("wtf1", all(d_d[Jb] - eps < nu[Jb])))
+        print(paste("wtf2", all(d_u[Jb] + eps > nu[Jb])))
+        if (all(d_d[Jb] - eps < nu[Jb]) && all(d_u[Jb] + eps > nu[Jb])) {
+            solved <- TRUE
             break
         }
 
         # step 4
-        k <- which(nu[Jb] < d_d[Jb] - EPSILON | nu[Jb] > d_u[Jb] + EPSILON)[1]
+        k <- which(nu[Jb] < d_d[Jb] - eps | nu[Jb] > d_u[Jb] + eps)[1]
         jk <- Jb[k]
 
         # step 5
@@ -71,8 +89,8 @@ dual_simplex <- function(A, b, c, d_d, d_u) {
 
         # step 6
         sigma <- rep(Inf, length(Jn))
-        idx <- union(Jn_plus[which(uv[Jn_plus] < -EPSILON)],
-                     Jn_minus[which(uv[Jn_minus] > EPSILON)])
+        idx <- union(Jn_plus[which(uv[Jn_plus] < -eps)],
+                     Jn_minus[which(uv[Jn_minus] > eps)])
 
         for (index in 1:length(Jn)) {
             if (Jn[index] %in% idx) {
@@ -92,7 +110,16 @@ dual_simplex <- function(A, b, c, d_d, d_u) {
         # step 8
         Jb[k] <- j_star
         Ab <- A[,Jb]
-        B <- inv(Ab)
+        if (det(Ab) < eps) {
+            stop("det(Ab) = 0")
+        }
+        if (nrow(Ab) == 1 && ncol(Ab) == 1) {
+            B <- ginv(Ab)
+        }
+        else {
+            print(paste("dims", toString(dim(Ab))))
+            B <- inv(Ab)
+        }
 
         # step 9
         Jn = setdiff(J, Jb)
@@ -113,6 +140,6 @@ dual_simplex <- function(A, b, c, d_d, d_u) {
         Jn_minus = setdiff(Jn, Jn_plus)
     }
 
-    return(list(hasSolutions = hasSolutions, iterations = iter, plan = nu))
+    return(list(solved = solved, iterations = iter, plan = nu, basis = Jb))
 }
 

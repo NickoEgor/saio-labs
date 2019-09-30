@@ -39,7 +39,7 @@ while (TRUE) {
     task <- q$pop()
     result <- dual_simplex(A, b, c, task$lower, task$upper)
 
-    if (!result$hasSolutions || (c %*% result$plan)[1] <= r0) {
+    if (!result$solved || (c %*% result$plan)[1] <= r0) {
         next
     }
 
