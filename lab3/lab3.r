@@ -35,7 +35,7 @@ EPSILON <- '^'(10,-PRECISION)
 # }
 
 # input data
-res <- fromJSON(file = "examples/ex3.json")
+res <- fromJSON(file = "examples/ex2.json")
 
 rows <- res$rows
 cols <- res$cols
@@ -45,18 +45,21 @@ c <- res$c
 J <- c(1:ncol(A))
 mode <- res$mode
 
-# print("A:")
-# print(A)
-# print(paste("b:", toString(b)))
-# print(paste("c:", toString(c)))
+Jb <- guess_basis(A)
 
 mism <- cols - rows
 
 iter <- 0
 while (TRUE) {
     iter <- iter + 1
+    if (iter > 15)
+        stop()
     print(paste("Iter:", iter))
 
+    print("A")
+    print(A)
+    print(paste("b:", toString(b)))
+    print(paste("c:", toString(c)))
     # print(paste("A rows:", nrow(A), ", cols:", ncol(A)))
     # print(paste("b len:", length(b)))
     # print(paste("c len:", length(c)))
@@ -89,7 +92,7 @@ while (TRUE) {
     # plan <- round(plan, PRECISION)
     # write.lp(lprec, filename = paste("test", iter, ".lp", sep = ""))
 
-    result <- dual_simplex(A, b, c, rep(0, ncol(A)), rep(1e8, ncol(A)), eps = EPSILON)
+    result <- dual_simplex(A, b, c, rep(0, ncol(A)), rep(1e8, ncol(A)), eps = EPSILON, Jb)
     if (!result$solved) {
         stop("Can't solve task")
     }
@@ -103,6 +106,7 @@ while (TRUE) {
     J_all <- c(1:length(plan))
     # Jb <- get_basis(plan)
     Jb <- result$basis
+    # print(paste("Jb:", toString(sort(Jb))))
     print(paste("Jb:", toString(Jb)))
     # Jb <- which(plan > EPSILON)
     J_art <- setdiff(J_all, J)
@@ -116,10 +120,11 @@ while (TRUE) {
 
     # step 2
     common <- intersect(Jb, J_art)
+    print(paste("common", common))
 
     while (length(common) > 0) {
         extra <- common[1]
-        idx <- which.min(extra %in% Jb)
+        idx <- which.max(Jb %in% extra)
 
         shifted_extra <- extra - mism
 
@@ -142,11 +147,13 @@ while (TRUE) {
         plan <- plan[-extra]    # delete column
 
         J_all <- c(1:length(plan))
-        # Jb <- get_basis(plan)
         Jb <- Jb[-idx]
-        Jb_len <- length(Jb)
-        Jb <- Jb[c(idx:Jb_len)] + 1
-        print(paste("Jb:", toString(Jb)))
+        for (i in 1:length(Jb)) {
+            if (Jb[i] > extra) {
+                Jb[i] <- Jb[i] - 1
+            }
+        }
+        print(paste("new Jb:", toString(Jb)))
         J_art <- setdiff(J_all, J)
 
         b <- b - col*val
@@ -173,11 +180,7 @@ while (TRUE) {
     Ab <- A[,Jb]
     # print("Ab")
     # print(Ab)
-    if (nrow(Ab) == 1 && ncol(Ab) == 1)
-        B <- ginv(Ab)
-    else
-        print(paste("dims", toString(dim(Ab))))
-        B <- inv(Ab)
+    B <- inv_matrix(Ab,EPSILON)
     # print("Ab^-1")
     # print(B)
 
@@ -194,21 +197,14 @@ while (TRUE) {
 
     e0 <- rep(0, nrow(B))
     e0[i0] <- 1
-    # print(paste("ed:", toString(e0)))
     y <- e0 %*% B
-    # print(paste("y:", toString(y)))
     alpha <- y %*% A
     beta <- y %*% b
     fa <- c(alpha %% 1, -1)
     fa[Jb] <- 0
     fb <- beta %% 1
 
-    # print(paste("Alpha: [", toString(alpha), "]"))
-    # print(paste("New cond fa: [", toString(-fa), "]"))
-    # print(paste("New cond fb: [", -fb, "]"))
-
     Jn <- setdiff(J_all, Jb)
-    # print(paste("Jn", toString(Jn)))
     if (all(fa[Jn] < EPSILON)) {
         print("No whole plans")
         stop()
@@ -217,9 +213,10 @@ while (TRUE) {
     # step 5
     A <- cbind(A, rep.int(0, nrow(A)))
     A <- rbind(A, -fa)
-    b <- append(b, -fb)
-    c <- append(c, 0)
+    b <- c(b, -fb)
+    c <- c(c, 0)
+    Jb <- c(Jb, ncol(A))
 
-    # print("_________________________________________________________________________________________________________")
+    print("_________________________________________________________________________________________________________")
 }
 

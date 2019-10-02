@@ -1,44 +1,43 @@
-#!/usr/bin/env Rscript
-
-library(matlib) # inv
-library(MASS)   # ginv
 library(gtools) # combinations
 
-inv_matrix <- function(A, eps) {
-    if (abs(det(A)) < eps) {
-        stop("det(Ab) < eps")
-    }
-    if (nrow(A) == 1 && ncol(A) == 1) {
-        return(ginv(A))
-    }
-    else {
-        # print(paste("dims", toString(dim(A))))
-        return(inv(A))
-    }
-}
+# source("./inv_matrix.r")
+source("../math/inv_matrix.r")
 
-dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6) {
-
-    rows <- nrow(A)
+guess_basis <- function(A) {
     cols <- ncol(A)
+    rows <- nrow(A)
 
-    # starting basis
     J <- c(1:cols)
     combs <- combinations(cols, rows, J)
     for (i in 1:nrow(combs)) {
         Ab <- A[,combs[i,]]
         if (det(Ab) != 0) {
-            Jb <- combs[i,]
-            break
+            return(combs[i,])
         }
     }
 
-    print("A")
-    print(A)
-    print(paste("b:", toString(b)))
-    print(paste("c:", toString(c)))
+    return(NULL)
+}
 
+dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6, Jb = NULL) {
+
+    rows <- nrow(A)
+    cols <- ncol(A)
+
+    # starting basis
+    if (is.null(Jb))
+        Jb <- guess_basis(A)
+    Ab <- A[,Jb]
+
+    print(paste("Jb", toString(Jb)))
+    print("Ab")
+    print(Ab)
+    # print(paste("b:", toString(b)))
+    # print(paste("c:", toString(c)))
+
+    print("ALIVE")
     B <- inv_matrix(Ab, eps)
+    print("DEAD")
 
     # step 1
     y <- c[Jb] %*% B
@@ -66,7 +65,7 @@ dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6) {
         nu[Jb] <- B %*% (b - s)
 
         # step 3
-        print(paste("nu:", toString(nu)))
+        # print(paste("nu:", toString(nu)))
         if (all(d_d[Jb] - eps < nu[Jb]) && all(d_u[Jb] + eps > nu[Jb])) {
             solved <- TRUE
             break
@@ -108,24 +107,24 @@ dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6) {
         coplan <- coplan + sigma0*uv
 
         # step 8
-        print(paste("Jb:", toString(Jb)))
-        print("Ab")
-        print(Ab)
+        # print(paste("Jb:", toString(Jb)))
+        # print("Ab")
+        # print(Ab)
         Jb[k] <- j_star
         Ab <- A[,Jb]
 
-        print(paste("new Jb:", toString(Jb)))
-        print("new Ab")
-        print(Ab)
+        # print(paste("new Jb:", toString(Jb)))
+        # print("new Ab")
+        # print(Ab)
 
         # print("A")
         # print(A)
         # print(paste("b:", toString(b)))
         # print(paste("c:", toString(c)))
-        print("ALIVE")
+        # print("ALIVE")
         B <- inv_matrix(Ab, eps)
-        print("DEAD")
-        print("______________________________________________")
+        # print("DEAD")
+        # print("______________________________________________")
 
         # step 9
         Jn = setdiff(J, Jb)
