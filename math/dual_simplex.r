@@ -1,6 +1,5 @@
 library(gtools) # combinations
 
-# source("./inv_matrix.r")
 source("../math/inv_matrix.r")
 
 guess_basis <- function(A) {
@@ -19,7 +18,7 @@ guess_basis <- function(A) {
     return(NULL)
 }
 
-dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6, Jb = NULL) {
+dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6, Jb = NULL, Jn_plus = NULL) {
 
     rows <- nrow(A)
     cols <- ncol(A)
@@ -28,22 +27,16 @@ dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6, Jb = NULL) {
     if (is.null(Jb))
         Jb <- guess_basis(A)
     Ab <- A[,Jb]
-
-    print(paste("Jb", toString(Jb)))
-    print("Ab")
-    print(Ab)
-    # print(paste("b:", toString(b)))
-    # print(paste("c:", toString(c)))
-
-    print("ALIVE")
     B <- inv_matrix(Ab, eps)
-    print("DEAD")
 
     # step 1
     y <- c[Jb] %*% B
     coplan <- y %*% A - c
-    Jn <- setdiff(J, Jb)
-    Jn_plus <- Jn[which(coplan[Jn] >= 0)]
+    J_all <- c(1:cols)
+    Jn <- setdiff(J_all, Jb)
+
+    if (is.null(Jn_plus))
+        Jn_plus <- Jn[which(coplan[Jn] > EPSILON)]
     Jn_minus <- setdiff(Jn, Jn_plus)
 
     solved <- FALSE
@@ -63,9 +56,12 @@ dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6, Jb = NULL) {
         }
 
         nu[Jb] <- B %*% (b - s)
+        # print(paste("Jn+", toString(Jn_plus)))
+        # print(paste("Jn-", toString(Jn_minus)))
+        # print(paste("Jn", toString(Jn)))
+        # print(paste("nu:", toString(nu)))
 
         # step 3
-        # print(paste("nu:", toString(nu)))
         if (all(d_d[Jb] - eps < nu[Jb]) && all(d_u[Jb] + eps > nu[Jb])) {
             solved <- TRUE
             break
@@ -107,27 +103,13 @@ dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6, Jb = NULL) {
         coplan <- coplan + sigma0*uv
 
         # step 8
-        # print(paste("Jb:", toString(Jb)))
-        # print("Ab")
-        # print(Ab)
         Jb[k] <- j_star
         Ab <- A[,Jb]
 
-        # print(paste("new Jb:", toString(Jb)))
-        # print("new Ab")
-        # print(Ab)
-
-        # print("A")
-        # print(A)
-        # print(paste("b:", toString(b)))
-        # print(paste("c:", toString(c)))
-        # print("ALIVE")
         B <- inv_matrix(Ab, eps)
-        # print("DEAD")
-        # print("______________________________________________")
 
         # step 9
-        Jn = setdiff(J, Jb)
+        Jn = setdiff(J_all, Jb)
 
         if (j_star %in% Jn_plus) {
             if (u == 1) {
@@ -145,6 +127,6 @@ dual_simplex <- function(A, b, c, d_d, d_u, eps = 1e-6, Jb = NULL) {
         Jn_minus = setdiff(Jn, Jn_plus)
     }
 
-    return(list(solved = solved, iterations = iter, plan = nu, basis = Jb))
+    return(list(solved = solved, iterations = iter, plan = nu, basis = Jb, nonbasis_plus = Jn_plus))
 }
 
