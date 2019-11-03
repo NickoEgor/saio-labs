@@ -13,9 +13,10 @@ source("../math/dual_simplex.r")
 
 PRECISION <- 6
 EPSILON <- '^'(10,-PRECISION)
+MAX_ITERS <- 1500
 
 # input data
-res <- fromJSON(file = "examples/ex2.json")
+res <- fromJSON(file = "examples/ex1.json")
 
 rows <- res$rows
 cols <- res$cols
@@ -33,17 +34,10 @@ mism <- cols - rows
 iter <- 0
 while (TRUE) {
     iter <- iter + 1
-    if (iter > 40)
-        stop()
-    print(paste("Iter:", iter))
-    print(paste("Jb 1:", toString(Jb)))
+    if (iter > MAX_ITERS)
+        stop("Infinite loop")
 
     # step 1
-    if (iter == 6) {
-        print(A)
-        print(b)
-        print(c)
-    }
     result <- dual_simplex(A, b, c, rep(0, ncol(A)), rep(1e8, ncol(A)), EPSILON, Jb, Jn_plus)
     if (!result$solved) {
         stop("Can't solve task")
@@ -58,8 +52,6 @@ while (TRUE) {
     # step 2
     common <- intersect(Jb, J_art)
 
-    print(paste("Jb 2:", toString(Jb)))
-    print(toString(common))
     while (length(common) > 0) {
         extra <- common[1]
         idx <- which.max(Jb %in% extra)
@@ -74,8 +66,7 @@ while (TRUE) {
 
         coeff <- A[shifted_extra,extra]
         if (abs(coeff) - 1 > EPSILON) {
-            print(paste("wrong coeff:", coeff))
-            stop()
+            stop(paste("wrong coeff:", coeff))
         }
 
         A <- A[-shifted_extra,] # delete row
@@ -102,7 +93,6 @@ while (TRUE) {
 
         common <- intersect(Jb, J_art)
     }
-    print(paste("Jb 3:", toString(Jb)))
 
     # step 3
     if (all(is_whole(plan[J], EPSILON))) {
@@ -135,8 +125,7 @@ while (TRUE) {
 
     Jn <- setdiff(J_all, Jb)
     if (all(fa[Jn] < EPSILON)) {
-        print("No whole plans")
-        stop()
+        stop("No whole plans")
     }
 
     # step 5
@@ -145,8 +134,5 @@ while (TRUE) {
     b <- c(b, -fb)
     c <- c(c, 0)
     Jb <- c(Jb, ncol(A))
-
-    print(paste("Jb 4:", toString(Jb)))
-    print("________________________________________________________________")
 }
 
