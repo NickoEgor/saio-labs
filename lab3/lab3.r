@@ -16,7 +16,7 @@ EPSILON <- '^'(10,-PRECISION)
 MAX_ITERS <- 1500
 
 # input data
-res <- fromJSON(file = "examples/ex1.json")
+res <- fromJSON(file = "examples/ex7.json")
 
 rows <- res$rows
 cols <- res$cols
