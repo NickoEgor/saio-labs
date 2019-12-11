@@ -5,8 +5,8 @@ library(rjson)
 source("../math/adj_mat.r")
 
 # input data
-ex_num <- commandArgs(trailingOnly=TRUE)
-# ex_num <- "1"
+# ex_num <- commandArgs(trailingOnly=TRUE)
+ex_num <- "1"
 filename <- paste("examples/ex", ex_num, ".json", sep="")
 input <- fromJSON(file = filename)
 invisible(list2env(input, .GlobalEnv))
@@ -37,8 +37,7 @@ while (TRUE) {
         }
     }
 
-    min_w <- which.min(B[to])
-    if (min_w == Inf) {
+    if (which.min(B[to]) == Inf) {
         stop(paste("No paths from", s))
     }
 
